@@ -2046,7 +2046,7 @@ function LoginView() {
     if (window.google) {
       try {
         window.google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '1073455202051-itdm4qmdir6r0l99i14rolj23kbc4149.apps.googleusercontent.com',
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '358543794487-bknljggg9huk1p788sgo9kqqnrf2l6ug.apps.googleusercontent.com',
           callback: handleGoogleCredentialResponse
         });
         window.google.accounts.id.renderButton(
