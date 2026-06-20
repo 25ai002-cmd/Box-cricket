@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2/promise');
+const isPostgres = !!(process.env.DATABASE_URL || process.env.POSTGRES_URL);
+const mysql = !isPostgres ? require('mysql2/promise') : null;
+const pg = isPostgres ? require('pg') : null;
 const fs = require('fs');
 const path = require('path');
 const jwt = require('jsonwebtoken');
@@ -36,6 +38,89 @@ const dbConfig = {
 };
 
 let dbPool = null;
+
+const KEY_CASE_MAP = {
+  playerid: 'playerId',
+  ownerid: 'ownerId',
+  caretakerphone: 'caretakerPhone',
+  priceperhour: 'pricePerHour',
+  advancepercent: 'advancePercent',
+  reviewscount: 'reviewsCount',
+  upiqrimage: 'upiQrImage',
+  gamingdetails: 'gamingDetails',
+  creatorid: 'creatorId',
+  teamid: 'teamId',
+  userid: 'userId',
+  accesstype: 'accessType',
+  team1id: 'team1Id',
+  team2id: 'team2Id',
+  scorerid: 'scorerId',
+  scorername: 'scorerName',
+  isabandoned: 'isAbandoned',
+  matchstate: 'matchState',
+  tosstext: 'tossText',
+  sports_interests: 'sports_interests',
+  visitcount: 'visitCount',
+  paymentstatus: 'paymentStatus',
+  subscriptionexpiry: 'subscriptionExpiry',
+  lastexpiryreminder: 'lastExpiryReminder',
+  subscriptionplan: 'subscriptionPlan'
+};
+
+function normalizeRowKeys(row) {
+  if (!row || typeof row !== 'object') return row;
+  const newRow = {};
+  for (const [key, value] of Object.entries(row)) {
+    const mappedKey = KEY_CASE_MAP[key.toLowerCase()] || key;
+    newRow[mappedKey] = value;
+  }
+  return newRow;
+}
+
+function translateSql(sql) {
+  if (typeof sql !== 'string') return sql;
+  let pgSql = sql;
+  // Map MySQL LONGTEXT type to PostgreSQL TEXT type
+  pgSql = pgSql.replace(/\bLONGTEXT\b/gi, 'TEXT');
+  // Map backticks to empty strings for PostgreSQL case-insensitive names
+  pgSql = pgSql.replace(/`/g, '');
+  // Map MySQL-specific INSERT IGNORE to PostgreSQL equivalent
+  pgSql = pgSql.replace(
+    /INSERT IGNORE INTO team_access \((.*?)\) SELECT id, IFNULL\(creatorId, 'BCP-PL-0000'\), 'owner' FROM teams/i,
+    "INSERT INTO team_access ($1) SELECT id, COALESCE(creatorId, 'BCP-PL-0000'), 'owner' FROM teams ON CONFLICT (teamId, userId) DO NOTHING"
+  );
+  // Map ? placeholders to $1, $2, $3...
+  let paramCount = 1;
+  pgSql = pgSql.replace(/\?/g, () => `$${paramCount++}`);
+  return pgSql;
+}
+
+class PgMySQLAdapter {
+  constructor(pgPool) {
+    this.pool = pgPool;
+  }
+  async query(sql, params) {
+    const pgSql = translateSql(sql);
+    const res = await this.pool.query(pgSql, params);
+    const rows = Array.isArray(res.rows) ? res.rows.map(normalizeRowKeys) : [];
+    return [rows, res.fields];
+  }
+  async getConnection() {
+    const client = await this.pool.connect();
+    return {
+      query: async (sql, params) => {
+        const pgSql = translateSql(sql);
+        const res = await client.query(pgSql, params);
+        const rows = Array.isArray(res.rows) ? res.rows.map(normalizeRowKeys) : [];
+        return [rows, res.fields];
+      },
+      release: () => client.release()
+    };
+  }
+  async end() {
+    await this.pool.end();
+  }
+}
 let useLocalFallback = false;
 const LOCAL_DB_FILE = path.join(__dirname, 'local_db.json');
 const resetCodes = new Map();
@@ -455,29 +540,40 @@ function hashPassword(password) {
 // Database and Table initialization
 async function initDatabase() {
   try {
-    const isLocal = !process.env.DB_HOST || process.env.DB_HOST === '127.0.0.1' || process.env.DB_HOST === 'localhost';
-    if (isLocal) {
-      console.log(`Connecting to local MySQL server at ${dbConfig.host}:${dbConfig.port}...`);
-      const conn = await mysql.createConnection({
-        host: dbConfig.host,
-        port: dbConfig.port,
-        user: dbConfig.user,
-        password: dbConfig.password
+    if (isPostgres) {
+      console.log("Connecting to PostgreSQL database using environment URL...");
+      const pgPool = new pg.Pool({
+        connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
+        ssl: {
+          rejectUnauthorized: false
+        }
       });
-      await conn.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
-      console.log(`Database '${dbConfig.database}' verified.`);
-      await conn.end();
+      dbPool = new PgMySQLAdapter(pgPool);
     } else {
-      console.log(`Connecting to remote database '${dbConfig.database}' at ${dbConfig.host}:${dbConfig.port}...`);
-    }
+      const isLocal = !process.env.DB_HOST || process.env.DB_HOST === '127.0.0.1' || process.env.DB_HOST === 'localhost';
+      if (isLocal) {
+        console.log(`Connecting to local MySQL server at ${dbConfig.host}:${dbConfig.port}...`);
+        const conn = await mysql.createConnection({
+          host: dbConfig.host,
+          port: dbConfig.port,
+          user: dbConfig.user,
+          password: dbConfig.password
+        });
+        await conn.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
+        console.log(`Database '${dbConfig.database}' verified.`);
+        await conn.end();
+      } else {
+        console.log(`Connecting to remote MySQL database '${dbConfig.database}' at ${dbConfig.host}:${dbConfig.port}...`);
+      }
 
-    // Create pool with database selected
-    dbPool = mysql.createPool({
-      ...dbConfig,
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0
-    });
+      // Create pool with database selected
+      dbPool = mysql.createPool({
+        ...dbConfig,
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0
+      });
+    }
 
     console.log("Initializing database tables...");
 
