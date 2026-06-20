@@ -1,0 +1,6 @@
+{
+  "appId": "com.playfinity.app",
+  "appName": "Playfinity",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

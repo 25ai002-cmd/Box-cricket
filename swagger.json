@@ -1,0 +1,1243 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "BoxCricket Pro API Documentation",
+    "version": "1.0.0",
+    "description": "API documentation for the BoxCricket Pro backend server. Includes persistent endpoints for the Owner Dashboard (with analytics filters), Player Details (including loyalty rewards and profiles), Tournaments, and the Scoring Section."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "Local development server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Sign up, login, Google OAuth verification, and password recovery"
+    },
+    {
+      "name": "Owner Dashboard",
+      "description": "Used by Turf Owners to register venues, configure slot pricing, caretaker phones, view calendar bookings, and manage reservation slots"
+    },
+    {
+      "name": "Player Details",
+      "description": "Used to create, retrieve, and update user profiles, specialized styles, team rosters, loyalty visits, and career statistics"
+    },
+    {
+      "name": "Scoring Section",
+      "description": "Used by scorers to select active teams/players and submit completed match scores (runs, wickets, balls, sport, venue)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your JWT token (obtained from login/signup) in the format: Bearer <token>"
+      },
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "Pass your API Key in the 'x-api-key' header"
+      },
+      "ApiKeyQuery": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "apiKey",
+        "description": "Pass your API Key as a query parameter '?apiKey=YOUR_KEY'"
+      }
+    },
+    "schemas": {
+      "AuthSignup": {
+        "type": "object",
+        "required": ["password"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "testuser@gmail.com",
+            "description": "Only valid @gmail.com emails are supported for authentication."
+          },
+          "phone": {
+            "type": "string",
+            "example": "9876543210"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "example": "password123"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["admin", "viewer", "scorer"],
+            "default": "viewer",
+            "example": "viewer"
+          },
+          "sports_interests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["Box Cricket", "Football"]
+          }
+        }
+      },
+      "AuthLogin": {
+        "type": "object",
+        "required": ["emailOrPhone", "password"],
+        "properties": {
+          "emailOrPhone": {
+            "type": "string",
+            "example": "testuser@gmail.com",
+            "description": "Registered email address or phone number"
+          },
+          "password": {
+            "type": "string",
+            "example": "password123"
+          }
+        }
+      },
+      "AuthGoogle": {
+        "type": "object",
+        "required": ["token"],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Google Identity Services credential ID token",
+            "example": "eyJhbGciOiJSUzI1NiIsImtpZCI6..."
+          },
+          "role": {
+            "type": "string",
+            "enum": ["admin", "viewer", "scorer"],
+            "default": "viewer",
+            "example": "viewer"
+          }
+        }
+      },
+      "AuthDirectGoogle": {
+        "type": "object",
+        "required": ["email"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "directuser@gmail.com"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["admin", "viewer", "scorer"],
+            "default": "viewer",
+            "example": "viewer"
+          }
+        }
+      },
+      "ForgotPassword": {
+        "type": "object",
+        "required": ["email"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "testuser@gmail.com"
+          }
+        }
+      },
+      "ResetPassword": {
+        "type": "object",
+        "required": ["email", "code", "newPassword"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "testuser@gmail.com"
+          },
+          "code": {
+            "type": "string",
+            "example": "123456",
+            "description": "6-digit code sent to the email"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 6,
+            "example": "newpassword123"
+          }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "required": ["playerId"],
+        "properties": {
+          "playerId": {
+            "type": "string",
+            "example": "BCP-PL-1234"
+          },
+          "username": {
+            "type": "string",
+            "example": "johndoe"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "johndoe@gmail.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "9876543210"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["admin", "viewer", "scorer"],
+            "example": "viewer"
+          },
+          "specialty": {
+            "type": "string",
+            "example": "Batsman"
+          },
+          "specialties": {
+            "type": "object",
+            "example": {
+              "battingStyle": "Right Hand Bat",
+              "bowlingStyle": "Right Arm Medium"
+            }
+          },
+          "sports_interests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["Box Cricket", "Football"]
+          }
+        }
+      },
+      "Venue": {
+        "type": "object",
+        "required": ["id", "name", "address", "phone", "pricePerHour", "advancePercent"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "venue-1234"
+          },
+          "ownerId": {
+            "type": "string",
+            "example": "BCP-PL-1234"
+          },
+          "name": {
+            "type": "string",
+            "example": "Smash Box Turf"
+          },
+          "address": {
+            "type": "string",
+            "example": "123 Sports Road, City Center"
+          },
+          "phone": {
+            "type": "string",
+            "example": "9876543210"
+          },
+          "caretakerPhone": {
+            "type": "string",
+            "example": "9123456789"
+          },
+          "pricePerHour": {
+            "type": "integer",
+            "example": 800
+          },
+          "advancePercent": {
+            "type": "integer",
+            "example": 30
+          },
+          "terms": {
+            "type": "string",
+            "example": "1. 30% advance required to confirm slot. 2. Cancellation allowed 24 hours prior."
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["https://images.unsplash.com/photo-1544698310-74ea9d1c8258"]
+          },
+          "upiId": {
+            "type": "string",
+            "example": "arena@upi"
+          },
+          "upiQrImage": {
+            "type": "string",
+            "example": "data:image/png;base64,iVBORw0KGgoAAAANS..."
+          },
+          "sport": {
+            "type": "string",
+            "example": "Box Cricket"
+          },
+          "sports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["Box Cricket", "Football"]
+          }
+        }
+      },
+      "Review": {
+        "type": "object",
+        "required": ["id", "user", "rating"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "rev-1234"
+          },
+          "user": {
+            "type": "string",
+            "example": "Amit G."
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "example": 5
+          },
+          "comment": {
+            "type": "string",
+            "example": "Excellent turf bounce and lighting!"
+          },
+          "date": {
+            "type": "string",
+            "example": "Today"
+          }
+        }
+      },
+      "Booking": {
+        "type": "object",
+        "required": ["id", "venueId", "venueName", "date", "timeSlot", "amountPaid", "customerName"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "book-1234"
+          },
+          "venueId": {
+            "type": "string",
+            "example": "venue-1234"
+          },
+          "venueName": {
+            "type": "string",
+            "example": "Smash Box Turf"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-05-27"
+          },
+          "timeSlot": {
+            "type": "string",
+            "example": "06:00 PM - 07:00 PM"
+          },
+          "duration": {
+            "type": "string",
+            "example": "1 Hour"
+          },
+          "amountPaid": {
+            "type": "integer",
+            "example": 240
+          },
+          "status": {
+            "type": "string",
+            "example": "CONFIRMED"
+          },
+          "customerName": {
+            "type": "string",
+            "example": "John Doe"
+          }
+        }
+      },
+      "Team": {
+        "type": "object",
+        "required": ["id", "name", "captain"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "team-1234"
+          },
+          "name": {
+            "type": "string",
+            "example": "Strikers XI"
+          },
+          "captain": {
+            "type": "string",
+            "example": "John Doe"
+          }
+        }
+      },
+      "Player": {
+        "type": "object",
+        "required": ["id", "name", "jersey", "role"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "player-1234"
+          },
+          "name": {
+            "type": "string",
+            "example": "Virat Kohli"
+          },
+          "jersey": {
+            "type": "string",
+            "example": "18"
+          },
+          "role": {
+            "type": "string",
+            "example": "Batsman"
+          },
+          "matches": {
+            "type": "integer",
+            "example": 12
+          },
+          "runs": {
+            "type": "integer",
+            "example": 350
+          },
+          "avg": {
+            "type": "number",
+            "example": 35.0
+          },
+          "sr": {
+            "type": "number",
+            "example": 145.5
+          },
+          "wickets": {
+            "type": "integer",
+            "example": 2
+          },
+          "eco": {
+            "type": "number",
+            "example": 7.5
+          },
+          "best": {
+            "type": "string",
+            "example": "3/15"
+          },
+          "phone": {
+            "type": "string",
+            "example": "9876543210"
+          }
+        }
+      },
+      "Match": {
+        "type": "object",
+        "required": ["id", "team1", "team2", "runs", "wickets", "balls", "crr", "date"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "match-1234"
+          },
+          "team1": {
+            "type": "string",
+            "example": "Strikers XI"
+          },
+          "team2": {
+            "type": "string",
+            "example": "Busters XI"
+          },
+          "runs": {
+            "type": "integer",
+            "example": 82
+          },
+          "wickets": {
+            "type": "integer",
+            "example": 4
+          },
+          "balls": {
+            "type": "integer",
+            "example": 48
+          },
+          "crr": {
+            "type": "string",
+            "example": "10.25"
+          },
+          "date": {
+            "type": "string",
+            "example": "Today"
+          },
+          "sport": {
+            "type": "string",
+            "example": "Cricket"
+          },
+          "venue": {
+            "type": "string",
+            "example": "Smash Box Turf"
+          }
+        }
+      },
+      "Tournament": {
+        "type": "object",
+        "required": ["id", "name", "sport", "date"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "tour-5541"
+          },
+          "name": {
+            "type": "string",
+            "example": "Vasant Vihar Box Championship"
+          },
+          "sport": {
+            "type": "string",
+            "example": "Box Cricket"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-06-15"
+          },
+          "standings": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "example": [
+              { "teamName": "Strikers XI", "played": 3, "won": 2, "lost": 1, "points": 4 },
+              { "teamName": "Busters XI", "played": 3, "won": 1, "lost": 2, "points": 2 }
+            ]
+          },
+          "bracket": {
+            "type": "object",
+            "properties": {
+              "quarterFinals": {
+                "type": "array",
+                "items": { "type": "object" }
+              },
+              "semiFinals": {
+                "type": "array",
+                "items": { "type": "object" }
+              },
+              "final": {
+                "type": "object"
+              }
+            },
+            "example": {
+              "quarterFinals": [],
+              "semiFinals": [],
+              "final": { "id": "f-1", "team1": "TBD", "team2": "TBD", "date": "TBD", "winner": "" }
+            }
+          }
+        }
+      },
+      "LoyaltyRecord": {
+        "type": "object",
+        "required": ["venueId", "visitCount"],
+        "properties": {
+          "venueId": {
+            "type": "string",
+            "example": "venue-1234",
+            "description": "Turf/Venue ID where user visits"
+          },
+          "visitCount": {
+            "type": "integer",
+            "example": 3,
+            "description": "Accumulated count of slot visits (resets to 0 upon reaching 7)"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/signup": {
+      "post": {
+        "summary": "Register a new user",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthSignup"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Standard username/phone & password login",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthLogin"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful login"
+          }
+        }
+      }
+    },
+    "/api/auth/google": {
+      "post": {
+        "summary": "Authenticate with Google ID SDK Token",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthGoogle"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful login/registration"
+          }
+        }
+      }
+    },
+    "/api/auth/direct-google": {
+      "post": {
+        "summary": "Passwordless direct Google login",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthDirectGoogle"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful login"
+          }
+        }
+      }
+    },
+    "/api/auth/forgot-password": {
+      "post": {
+        "summary": "Request forgot password verification code",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPassword"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reset code generated and sent"
+          }
+        }
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "summary": "Reset password using verification code",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPassword"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset success"
+          }
+        }
+      }
+    },
+    "/api/users/check-username": {
+      "get": {
+        "summary": "Check if a username is available",
+        "tags": ["Player Details"],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "newusername"
+          },
+          {
+            "name": "playerId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "BCP-PL-1234"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns uniqueness status"
+          }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "summary": "Get list of registered player users (Protected)",
+        "tags": ["Player Details"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of user profiles"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create or update user profile (Protected)",
+        "tags": ["Player Details"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserProfile"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully"
+          }
+        }
+      }
+    },
+    "/api/venues": {
+      "get": {
+        "summary": "Get all venues with reviews (Protected)",
+        "tags": ["Owner Dashboard", "Player Details"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of venues"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create or update a venue (Protected)",
+        "tags": ["Owner Dashboard"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Venue"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Venue created/updated successfully"
+          }
+        }
+      }
+    },
+    "/api/venues/{id}": {
+      "delete": {
+        "summary": "Delete a venue (Protected)",
+        "tags": ["Owner Dashboard"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "venue-1234",
+            "description": "Venue ID to delete"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Venue deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/venues/{id}/reviews": {
+      "post": {
+        "summary": "Add a review for a venue (Protected)",
+        "tags": ["Player Details"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "venue-1234"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Review"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Review added successfully"
+          }
+        }
+      }
+    },
+    "/api/bookings": {
+      "get": {
+        "summary": "Get all bookings (Protected) - supports optional venue/customer filtering",
+        "tags": ["Owner Dashboard", "Player Details"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "parameters": [
+          {
+            "name": "venueId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "example": "venue-1234",
+            "description": "Filter bookings by a specific venue ID (used on Owner Dashboard)"
+          },
+          {
+            "name": "customerName",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "example": "John Doe",
+            "description": "Filter bookings made by a specific customer name"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of bookings"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create bookings (Protected) - supports single or multiple bookings",
+        "tags": ["Owner Dashboard", "Player Details"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Booking"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Booking"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Booking(s) created successfully"
+          }
+        }
+      }
+    },
+    "/api/bookings/{id}": {
+      "delete": {
+        "summary": "Delete/cancel a booking (Protected)",
+        "tags": ["Owner Dashboard", "Player Details"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "book-1234"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Booking deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/teams": {
+      "get": {
+        "summary": "Get all teams with players (Protected)",
+        "tags": ["Player Details", "Scoring Section"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of teams with players list"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new team (Protected)",
+        "tags": ["Player Details"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Team"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Team created successfully"
+          }
+        }
+      }
+    },
+    "/api/teams/{id}/players": {
+      "post": {
+        "summary": "Add a player to a team (Protected)",
+        "tags": ["Player Details"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "team-1234"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Player"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Player added successfully"
+          }
+        }
+      }
+    },
+    "/api/players/{id}": {
+      "put": {
+        "summary": "Update player profile details (Protected)",
+        "tags": ["Player Details"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "player-1234"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "jersey", "role"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Virat Kohli"
+                  },
+                  "jersey": {
+                    "type": "string",
+                    "example": "18"
+                  },
+                  "role": {
+                    "type": "string",
+                    "example": "All-Rounder"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "example": "9876543210"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Player updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove a player (Protected)",
+        "tags": ["Player Details"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "player-1234"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player removed successfully"
+          }
+        }
+      }
+    },
+    "/api/matches": {
+      "get": {
+        "summary": "Get all completed matches (Protected)",
+        "tags": ["Owner Dashboard", "Player Details", "Scoring Section"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of completed matches"
+          }
+        }
+      },
+      "post": {
+        "summary": "Save a completed match (Protected)",
+        "tags": ["Scoring Section"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Match"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Match saved successfully"
+          }
+        }
+      }
+    },
+    "/api/tournaments": {
+      "get": {
+        "summary": "Get all tournaments (Protected)",
+        "tags": ["Player Details", "Scoring Section"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of persistent tournaments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Tournament"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create or update a tournament (Protected)",
+        "tags": ["Player Details"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Tournament"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tournament created/updated successfully"
+          }
+        }
+      }
+    },
+    "/api/loyalty": {
+      "get": {
+        "summary": "Get loyalty visits count for authenticated player (Protected)",
+        "tags": ["Player Details"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON object mapping venueId to visitCount",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer"
+                  }
+                },
+                "example": {
+                  "venue-1234": 3,
+                  "venue-5678": 0
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Update/set loyalty visits count for a turf (Protected)",
+        "tags": ["Player Details"],
+        "security": [
+          { "BearerAuth": [] },
+          { "ApiKeyAuth": [] },
+          { "ApiKeyQuery": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoyaltyRecord"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Loyalty visit count successfully updated"
+          }
+        }
+      }
+    }
+  }
+}

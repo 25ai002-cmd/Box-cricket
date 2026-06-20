@@ -1,0 +1,368 @@
+﻿--- Line 77 ---
+75:         {/* Input for prompts */}
+76:         {modalState.type === 'prompt' && (
+77:           <input
+78:             type="text"
+79:             className="form-input"
+80:             placeholder={modalState.placeholder}
+81:             value={inputValue}
+--- Line 1500 ---
+1498:               <div className="form-group">
+1499:                 <label className="form-label">Registered Email Address</label>
+1500:                 <input 
+1501:                   type="email" 
+1502:                   placeholder="name@email.com" 
+1503:                   className="form-input" 
+1504:                   value={forgotEmail}
+--- Line 1520 ---
+1518:               <div className="form-group">
+1519:                 <label className="form-label">Verification Code (6-digit)</label>
+1520:                 <input 
+1521:                   type="text" 
+1522:                   placeholder="e.g. 123456" 
+1523:                   className="form-input" 
+1524:                   value={forgotCode}
+--- Line 1532 ---
+1530:               <div className="form-group">
+1531:                 <label className="form-label">Choose New Password</label>
+1532:                 <input 
+1533:                   type="password" 
+1534:                   placeholder="At least 6 characters" 
+1535:                   className="form-input" 
+1536:                   value={forgotNewPassword}
+--- Line 1585 ---
+1583:               <div className="form-group">
+1584:                 <label className="form-label">Phone/Email</label>
+1585:                 <input 
+1586:                   type="text" 
+1587:                   placeholder="9876543210 or name@email.com" 
+1588:                   className="form-input" 
+1589:                   value={email || phone}
+--- Line 1604 ---
+1602:               <div className="form-group">
+1603:                 <label className="form-label">Password</label>
+1604:                 <input 
+1605:                   type="password" 
+1606:                   placeholder="ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó" 
+1607:                   className="form-input" 
+1608:                   value={password}
+--- Line 1618 ---
+1616:                 <div className="form-group">
+1617:                   <label className="form-label">Full Name</label>
+1618:                   <input 
+1619:                     type="text" 
+1620:                     placeholder="John Doe" 
+1621:                     className="form-input" 
+1622:                     value={fullName}
+--- Line 1628 ---
+1626:                 <div className="form-group">
+1627:                   <label className="form-label">Mobile Number</label>
+1628:                   <input 
+1629:                     type="tel" 
+1630:                     placeholder="Phone" 
+1631:                     className="form-input" 
+1632:                     value={phone}
+--- Line 1638 ---
+1636:                 <div className="form-group">
+1637:                   <label className="form-label">Email Address</label>
+1638:                   <input 
+1639:                     type="email" 
+1640:                     placeholder="name@email.com" 
+1641:                     className="form-input" 
+1642:                     value={email}
+--- Line 1648 ---
+1646:                 <div className="form-group">
+1647:                   <label className="form-label">Create Password</label>
+1648:                   <input 
+1649:                     type="password" 
+1650:                     placeholder="ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó" 
+1651:                     className="form-input" 
+1652:                     value={password}
+--- Line 1982 ---
+1980:         <div className="form-group">
+1981:           <label className="form-label">Venue / Complex Name</label>
+1982:           <input 
+1983:             type="text" 
+1984:             placeholder="e.g. Smash Sports Complex"
+1985:             className="form-input"
+1986:             value={boxName}
+--- Line 1993 ---
+1991:         <div className="form-group">
+1992:           <label className="form-label">Address</label>
+1993:           <input 
+1994:             type="text" 
+1995:             placeholder="Arena street address, city" 
+1996:             className="form-input"
+1997:             value={address}
+--- Line 2004 ---
+2002:         <div className="form-group">
+2003:           <label className="form-label">Owner Contact Number</label>
+2004:           <input 
+2005:             type="tel" 
+2006:             placeholder="e.g. +91 98765 43210" 
+2007:             className="form-input"
+2008:             value={phone}
+--- Line 2015 ---
+2013:         <div className="form-group">
+2014:           <label className="form-label">Caretaker Phone Number</label>
+2015:           <input 
+2016:             type="tel" 
+2017:             placeholder="e.g. +91 98765 43210" 
+2018:             className="form-input"
+2019:             value={caretakerPhone}
+--- Line 2026 ---
+2024:         <div className="form-group">
+2025:           <label className="form-label">UPI ID for Direct Payments</label>
+2026:           <input 
+2027:             type="text" 
+2028:             placeholder="e.g. smashbox@okaxis" 
+2029:             className="form-input"
+2030:             value={upiId}
+--- Line 2037 ---
+2035:         <div className="form-group">
+2036:           <label className="form-label">UPI QR Code Scanner (Image Upload)</label>
+2037:           <input 
+2038:             type="file" 
+2039:             accept="image/*"
+2040:             onChange={(e) => {
+2041:               const file = e.target.files[0];
+--- Line 2071 ---
+2069:           <div className="form-group" style={{flex: 1}}>
+2070:             <label className="form-label">Hourly Price (Γé╣)</label>
+2071:             <input 
+2072:               type="number" 
+2073:               className="form-input"
+2074:               value={pricePerHour}
+2075:               onChange={e => setPricePerHour(e.target.value)}
+--- Line 2132 ---
+2130:         <div className="form-group">
+2131:           <label className="form-label">Booking Terms & Conditions</label>
+2132:           <textarea 
+2133:             className="form-input" 
+2134:             rows="3" 
+2135:             style={{background: 'rgba(0,0,0,0.3)', resize: 'none'}}
+2136:             value={terms}
+--- Line 2263 ---
+2261:                 Username
+2262:               </label>
+2263:               <input
+2264:                 className="input-field"
+2265:                 autoFocus
+2266:                 placeholder="e.g. SixHitter99"
+2267:                 value={draftUsername}
+--- Line 2293 ---
+2291:       <div style={styles.searchContainer}>
+2292:         <Search size={18} color="var(--text-muted)" style={styles.searchIcon} />
+2293:         <input 
+2294:           type="text" 
+2295:           placeholder="Search venues by name or area..." 
+2296:           className="form-input" 
+2297:           style={{paddingLeft: 38, background: 'rgba(0,0,0,0.3)'}}
+--- Line 2900 ---
+2898:             ))}
+2899:           </div>
+2900:           <textarea 
+2901:             placeholder="Share your playing experience at this box turf..." 
+2902:             className="form-input" 
+2903:             rows="2"
+2904:             value={reviewComment}
+--- Line 3023 ---
+3021:               <div className="form-group">
+3022:                 <label className="form-label" style={{fontSize: '0.75rem'}}>UPI Transaction ID / UTR Number</label>
+3023:                 <input 
+3024:                   type="text" 
+3025:                   placeholder="Enter 12-digit Transaction ID" 
+3026:                   className="form-input" 
+3027:                   value={utr}
+--- Line 3660 ---
+3658:             <div className="form-group">
+3659:               <label className="form-label">Team Name</label>
+3660:               <input 
+3661:                 type="text" 
+3662:                 placeholder="e.g. MUMBAI WARRIORS" 
+3663:                 className="form-input" 
+3664:                 value={newTeamName}
+--- Line 3670 ---
+3668:             <div className="form-group">
+3669:               <label className="form-label">Team Captain</label>
+3670:               <input 
+3671:                 type="text" 
+3672:                 placeholder="Captain Name" 
+3673:                 className="form-input" 
+3674:                 value={newTeamCaptain}
+--- Line 3724 ---
+3722:               <div className="form-group" style={{position: 'relative'}}>
+3723:                 <label className="form-label">≡ƒöì Select Venue</label>
+3724:                 <input 
+3725:                   type="text" 
+3726:                   placeholder="≡ƒöì Search venue by name or address..." 
+3727:                   className="form-input" 
+3728:                   value={venueSearchQuery}
+--- Line 3805 ---
+3803:                 <div className="form-group">
+3804:                   <label className="form-label">Match Overs</label>
+3805:                   <input type="number" value={oversCount} onChange={e => setOversCount(e.target.value)} className="form-input" />
+3806:                 </div>
+3807:               )}
+3808:               {selectedSport === 'Football' && (
+3809:                 <div className="form-group">
+--- Line 3811 ---
+3809:                 <div className="form-group">
+3810:                   <label className="form-label">Match Duration (Minutes)</label>
+3811:                   <input type="number" value={footballDuration} onChange={e => setFootballDuration(e.target.value)} className="form-input" />
+3812:                 </div>
+3813:               )}
+3814:               {selectedSport === 'Volleyball' && (
+3815:                 <div className="form-group">
+--- Line 3826 ---
+3824:                 <div className="form-group">
+3825:                   <label className="form-label">Quarter Duration (Minutes)</label>
+3826:                   <input type="number" value={basketballDuration} onChange={e => setBasketballDuration(e.target.value)} className="form-input" />
+3827:                 </div>
+3828:               )}
+3829: 
+3830:               <button type="submit" className="btn-neon" style={{marginTop: 8, padding: '12px 0'}}>
+--- Line 3874 ---
+3872:                         <label className="form-label" style={{fontSize: '0.75rem'}}>≡ƒöì Search Registered App Users</label>
+3873:                         <div style={{display: 'flex', gap: 6}}>
+3874:                           <input 
+3875:                             type="text" 
+3876:                             placeholder="≡ƒöì Enter phone number to search..." 
+3877:                             className="form-input" 
+3878:                             value={searchQuery}
+--- Line 3997 ---
+3995:                       <div className="form-group">
+3996:                         <label className="form-label" style={{fontSize: '0.75rem'}}>Player Name</label>
+3997:                         <input 
+3998:                           type="text" 
+3999:                           placeholder="e.g. Suresh R." 
+4000:                           className="form-input" 
+4001:                           value={playerName}
+--- Line 4010 ---
+4008:                       <div className="form-group">
+4009:                         <label className="form-label" style={{fontSize: '0.75rem'}}>Phone Number</label>
+4010:                         <input 
+4011:                           type="text" 
+4012:                           placeholder="Manual entry phone number" 
+4013:                           className="form-input" 
+4014:                           value={playerPhone}
+--- Line 4023 ---
+4021:                       <div className="form-group">
+4022:                         <label className="form-label" style={{fontSize: '0.75rem'}}>Jersey Number</label>
+4023:                         <input 
+4024:                           type="text" 
+4025:                           placeholder="Jersey" 
+4026:                           className="form-input" 
+4027:                           value={jersey}
+--- Line 4074 ---
+4072:                               <span style={{fontSize: '0.72rem', color: 'var(--secondary)', fontWeight: 'bold'}}>EDIT PLAYER DETAILS</span>
+4073:                               <div className="form-group" style={{marginBottom: 4}}>
+4074:                                 <input 
+4075:                                   type="text" 
+4076:                                   placeholder="Name" 
+4077:                                   className="form-input" 
+4078:                                   style={{padding: '6px 8px', fontSize: '0.8rem'}}
+--- Line 4085 ---
+4083:                               </div>
+4084:                               <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6}}>
+4085:                                 <input 
+4086:                                   type="text" 
+4087:                                   placeholder="Jersey" 
+4088:                                   className="form-input" 
+4089:                                   style={{padding: '6px 8px', fontSize: '0.8rem'}}
+--- Line 4106 ---
+4104:                               </div>
+4105:                               <div className="form-group" style={{marginBottom: 4}}>
+4106:                                 <input 
+4107:                                   type="text" 
+4108:                                   placeholder="Phone Number (Optional)" 
+4109:                                   className="form-input" 
+4110:                                   style={{padding: '6px 8px', fontSize: '0.8rem'}}
+--- Line 5497 ---
+5495:         <div className="form-group">
+5496:           <label className="form-label">Tournament Name</label>
+5497:           <input 
+5498:             type="text" 
+5499:             placeholder="e.g. Kopar Champions League" 
+5500:             className="form-input" 
+5501:             value={tourName}
+--- Line 5531 ---
+5529:           <div className="form-group" style={{flex: 1}}>
+5530:             <label className="form-label">Overs per Innings</label>
+5531:             <input 
+5532:               type="number" 
+5533:               className="form-input" 
+5534:               value={overs}
+5535:               onChange={e => setOvers(e.target.value)}
+--- Line 5540 ---
+5538:           <div className="form-group" style={{flex: 1}}>
+5539:             <label className="form-label">Max Teams</label>
+5540:             <input 
+5541:               type="number" 
+5542:               className="form-input" 
+5543:               value={teamsCount}
+5544:               onChange={e => setTeamsCount(e.target.value)}
+--- Line 5553 ---
+5551:           <div style={{position: 'relative'}}>
+5552:             <span style={{position: 'absolute', left: 14, top: 12, color: 'var(--text-muted)'}}>Γé╣</span>
+5553:             <input 
+5554:               type="number" 
+5555:               className="form-input" 
+5556:               style={{paddingLeft: 28}}
+5557:               value={entryFee}
+--- Line 5785 ---
+5783:           <div className="form-group">
+5784:             <label className="form-label">Team Name</label>
+5785:             <input 
+5786:               type="text" 
+5787:               placeholder="e.g. THUNDER XI" 
+5788:               className="form-input" 
+5789:               value={newTeamName}
+--- Line 5795 ---
+5793:           <div className="form-group">
+5794:             <label className="form-label">Team Captain</label>
+5795:             <input 
+5796:               type="text" 
+5797:               placeholder="Captain Name" 
+5798:               className="form-input" 
+5799:               value={newTeamCaptain}
+--- Line 5831 ---
+5829:             <label className="form-label">≡ƒöì Search Registered App Users</label>
+5830:             <div style={{display: 'flex', gap: 6}}>
+5831:               <input 
+5832:                 type="text" 
+5833:                 placeholder="≡ƒöì Enter phone number to search..." 
+5834:                 className="form-input" 
+5835:                 value={searchQuery}
+--- Line 5954 ---
+5952:           <div className="form-group">
+5953:             <label className="form-label">Player Name</label>
+5954:             <input 
+5955:               type="text" 
+5956:               placeholder="e.g. Suresh R." 
+5957:               className="form-input" 
+5958:               value={playerName}
+--- Line 5967 ---
+5965:           <div className="form-group">
+5966:             <label className="form-label">Phone Number</label>
+5967:             <input 
+5968:               type="text" 
+5969:               placeholder="Manual entry phone number" 
+5970:               className="form-input" 
+5971:               value={playerPhone}
+--- Line 5980 ---
+5978:           <div className="form-group">
+5979:             <label className="form-label">Jersey Number</label>
+5980:             <input 
+5981:               type="text" 
+5982:               placeholder="Jersey" 
+5983:               className="form-input" 
+5984:               value={jersey}
+--- Line 6141 ---
+6139:                 New Username
+6140:               </label>
+6141:               <input
+6142:                 className="input-field"
+6143:                 autoFocus
+6144:                 placeholder="e.g. SixHitter99"
+6145:                 value={draftUsername}
