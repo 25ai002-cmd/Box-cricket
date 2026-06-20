@@ -31,7 +31,8 @@ const dbConfig = {
   host: process.env.DB_HOST || '127.0.0.1',
   port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'Yaksh@1419'
+  password: process.env.DB_PASSWORD || 'Yaksh@1419',
+  database: process.env.DB_NAME || 'box_cricket'
 };
 
 let dbPool = null;
@@ -454,18 +455,25 @@ function hashPassword(password) {
 // Database and Table initialization
 async function initDatabase() {
   try {
-    console.log("Connecting to local MySQL server at 127.0.0.1:3306...");
-    const conn = await mysql.createConnection(dbConfig);
-    
-    // Create database
-    await conn.query("CREATE DATABASE IF NOT EXISTS box_cricket");
-    console.log("Database 'box_cricket' verified.");
-    await conn.end();
+    const isLocal = !process.env.DB_HOST || process.env.DB_HOST === '127.0.0.1' || process.env.DB_HOST === 'localhost';
+    if (isLocal) {
+      console.log(`Connecting to local MySQL server at ${dbConfig.host}:${dbConfig.port}...`);
+      const conn = await mysql.createConnection({
+        host: dbConfig.host,
+        port: dbConfig.port,
+        user: dbConfig.user,
+        password: dbConfig.password
+      });
+      await conn.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
+      console.log(`Database '${dbConfig.database}' verified.`);
+      await conn.end();
+    } else {
+      console.log(`Connecting to remote database '${dbConfig.database}' at ${dbConfig.host}:${dbConfig.port}...`);
+    }
 
     // Create pool with database selected
     dbPool = mysql.createPool({
       ...dbConfig,
-      database: 'box_cricket',
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0
