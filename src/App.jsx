@@ -524,6 +524,12 @@ const SPORT_POSITIONS = {
     { id: 'Speed Skater', label: '⚡ Speed Skater' },
     { id: 'Figure Skater', label: '💃 Figure Skater' },
     { id: 'Roller Skater', label: '🛼 Roller Skater' }
+  ],
+  'Gaming': [
+    { id: 'Pro Gamer', label: '🎮 Pro Gamer' },
+    { id: 'Casual Gamer', label: '✨ Casual Gamer' },
+    { id: 'Streamer', label: '🎥 Streamer' },
+    { id: 'In-Game Leader', label: '👑 In-Game Leader' }
   ]
 };
 
