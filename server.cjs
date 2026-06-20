@@ -91,7 +91,7 @@ function translateSql(sql) {
   );
   
   // Map PostgreSQL reserved column keyword 'user' in 'reviews' table specifically
-  pgSql = pgSql.replace(/\buser VARCHAR\(100\)\b/gi, '"user" VARCHAR(100)');
+  pgSql = pgSql.replace(/\buser VARCHAR\b/gi, '"user" VARCHAR');
   pgSql = pgSql.replace(/\bINSERT INTO reviews \((.*?)user(.*?)\)/gi, 'INSERT INTO reviews ($1"user"$2)');
   
   // Map ? placeholders to $1, $2, $3...
