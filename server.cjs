@@ -89,6 +89,11 @@ function translateSql(sql) {
     /INSERT IGNORE INTO team_access \((.*?)\) SELECT id, IFNULL\(creatorId, 'BCP-PL-0000'\), 'owner' FROM teams/i,
     "INSERT INTO team_access ($1) SELECT id, COALESCE(creatorId, 'BCP-PL-0000'), 'owner' FROM teams ON CONFLICT (teamId, userId) DO NOTHING"
   );
+  
+  // Map PostgreSQL reserved column keyword 'user' in 'reviews' table specifically
+  pgSql = pgSql.replace(/\buser VARCHAR\(100\)\b/gi, '"user" VARCHAR(100)');
+  pgSql = pgSql.replace(/\bINSERT INTO reviews \((.*?)user(.*?)\)/gi, 'INSERT INTO reviews ($1"user"$2)');
+  
   // Map ? placeholders to $1, $2, $3...
   let paramCount = 1;
   pgSql = pgSql.replace(/\?/g, () => `$${paramCount++}`);
