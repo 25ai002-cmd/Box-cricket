@@ -25,6 +25,11 @@ const REGISTERABLE_SPORTS = [
   'Snooker'
 ];
 
+const API_BASE = import.meta.env.VITE_API_URL || 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3001'
+    : '');
+
 function CustomModal() {
   const { modalState } = useAppState();
   const [inputValue, setInputValue] = useState('');
@@ -288,7 +293,7 @@ function PhoneOnboardingModal() {
   const handlePhoneBlur = async () => {
     if (!phoneVal.trim() || phoneVal.trim().length < 6) return;
     try {
-      const res = await fetch(`http://localhost:3001/api/auth/check-phone?phone=${encodeURIComponent(phoneVal.trim())}`);
+      const res = await fetch(`${API_BASE}/api/auth/check-phone?phone=${encodeURIComponent(phoneVal.trim())}`);
       const data = await res.json();
       if (data.taken) {
         setPhoneError('This phone number is already registered. Please use a different number.');
@@ -319,7 +324,7 @@ function PhoneOnboardingModal() {
 
     setLoading(true);
     try {
-      const checkRes = await fetch(`http://localhost:3001/api/auth/check-phone?phone=${encodeURIComponent(phoneVal.trim())}`);
+      const checkRes = await fetch(`${API_BASE}/api/auth/check-phone?phone=${encodeURIComponent(phoneVal.trim())}`);
       const checkData = await checkRes.json();
       if (checkData.taken) {
         setPhoneError('This phone number is already registered. Please use a different number.');
@@ -1568,7 +1573,7 @@ function PaymentModal() {
       setIsProcessingPay(true);
       try {
         // 1. Create order on backend
-        const orderRes = await fetch('http://localhost:3001/api/payment/create-order', {
+        const orderRes = await fetch(`${API_BASE}/api/payment/create-order`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1939,7 +1944,7 @@ function LoginView() {
   const handlePhoneBlur = async () => {
     if (!phone.trim() || phone.trim().length < 6 || activeTab !== 'signup') return;
     try {
-      const res = await fetch(`http://localhost:3001/api/auth/check-phone?phone=${encodeURIComponent(phone.trim())}`);
+      const res = await fetch(`${API_BASE}/api/auth/check-phone?phone=${encodeURIComponent(phone.trim())}`);
       const data = await res.json();
       if (data.taken) {
         setPhoneError('This phone number is already registered. Please use a different number or log in.');
@@ -1962,7 +1967,7 @@ function LoginView() {
     setLoading(true);
     setAuthError('');
     try {
-      const res = await fetch('http://localhost:3001/api/auth/google', {
+      const res = await fetch(`${API_BASE}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: response.credential, role: userRole })
@@ -2064,7 +2069,7 @@ function LoginView() {
     }
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3001/api/auth/forgot-password', {
+      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail })
@@ -2093,7 +2098,7 @@ function LoginView() {
     }
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3001/api/auth/verify-reset-code', {
+      const res = await fetch(`${API_BASE}/api/auth/verify-reset-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail, code: forgotCode })
@@ -2126,7 +2131,7 @@ function LoginView() {
     }
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3001/api/auth/reset-password', {
+      const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail, code: forgotCode, newPassword: forgotNewPassword })
@@ -2197,7 +2202,7 @@ function LoginView() {
 
       if (userRole === 'admin') {
         try {
-          const res = await fetch('http://localhost:3001/api/auth/request-signup-verification', {
+          const res = await fetch(`${API_BASE}/api/auth/request-signup-verification`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email })
@@ -2248,7 +2253,7 @@ function LoginView() {
         let user;
         if (isGmail) {
           // Passwordless Direct Google Email Login
-          const res = await fetch('http://localhost:3001/api/auth/direct-google', {
+          const res = await fetch(`${API_BASE}/api/auth/direct-google`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: identifier, role: userRole })
@@ -2343,7 +2348,7 @@ function LoginView() {
     }
     setLoading(true);
     try {
-      const verifyRes = await fetch('http://localhost:3001/api/auth/verify-signup-code', {
+      const verifyRes = await fetch(`${API_BASE}/api/auth/verify-signup-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code: signupVerifyCode })
@@ -4520,7 +4525,7 @@ function VenueDetailView() {
     setPaymentLoading(true);
     try {
       // 1. Create Razorpay order on backend
-      const orderRes = await fetch('http://localhost:3001/api/payment/create-order', {
+      const orderRes = await fetch(`${API_BASE}/api/payment/create-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -4542,7 +4547,7 @@ function VenueDetailView() {
         order_id: orderData.orderId,
         handler: async (response) => {
           // 3. Verify payment signature on backend
-          const verifyRes = await fetch('http://localhost:3001/api/payment/verify', {
+          const verifyRes = await fetch(`${API_BASE}/api/payment/verify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -15016,7 +15021,7 @@ function PlayerProfileView() {
       }
 
       if (trimmedPhone !== (userPhone || '')) {
-        const checkRes = await fetch(`http://localhost:3001/api/auth/check-phone?phone=${encodeURIComponent(trimmedPhone)}`);
+        const checkRes = await fetch(`${API_BASE}/api/auth/check-phone?phone=${encodeURIComponent(trimmedPhone)}`);
         const checkData = await checkRes.json();
         if (checkData.taken) {
           setPhoneError('This phone number is already registered by another user.');
@@ -16252,7 +16257,7 @@ function GamingHubView() {
   const handleRazorpayPayment = async () => {
     setPaymentLoading(true);
     try {
-      const orderRes = await fetch('http://localhost:3001/api/payment/create-order', {
+      const orderRes = await fetch(`${API_BASE}/api/payment/create-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -16277,7 +16282,7 @@ function GamingHubView() {
         description: `${currentVenue?.name} — ${selectedStation?.name} (${selectedSlotTimes.length} hr)`,
         order_id: orderData.orderId,
         handler: async (response) => {
-          const verifyRes = await fetch('http://localhost:3001/api/payment/verify', {
+          const verifyRes = await fetch(`${API_BASE}/api/payment/verify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
