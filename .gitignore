@@ -28,3 +28,4 @@ scratch/
 .env
 .env.local
 .env.*.local
+firebase-credentials.json
