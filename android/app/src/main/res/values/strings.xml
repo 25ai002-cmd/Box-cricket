@@ -4,4 +4,6 @@
     <string name="title_activity_main">Playfinity</string>
     <string name="package_name">com.playfinity.app</string>
     <string name="custom_url_scheme">com.playfinity.app</string>
+    <string name="server_client_id">358543794487-bknljggg9huk1p788sgo9kqqnrf2l6ug.apps.googleusercontent.com</string>
 </resources>
+

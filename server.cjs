@@ -42,8 +42,9 @@ try {
 
   if (serviceAccount) {
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
+      credential: admin.cert(serviceAccount)
     });
+
     firebaseInitialized = true;
     console.log("✅ Firebase Admin SDK successfully initialized!");
   } else {
@@ -2686,6 +2687,8 @@ app.post('/api/venues/:id/reviews', authenticateRequest, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
 // Register Push Notification Token
 app.post('/api/notifications/register', authenticateRequest, async (req, res) => {
   const { token } = req.body;

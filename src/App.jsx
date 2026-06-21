@@ -2135,7 +2135,66 @@ function LoginView() {
     }
   }, [userRole, activeTab]);
 
-  // Google Authentication handler using Google Identity Services SDK callback
+  // Helper to handle login success state/storage updates and redirection
+  const processLoginSuccess = async (data) => {
+    const { token, user } = data;
+    
+    setAuthToken(token);
+    setApiKey(user.apiKey || '');
+    setPlayerId(user.playerId);
+    setUserName(user.username || '');
+    setUserEmail(user.email || '');
+    setUserPhone(user.phone || '');
+    const activeRole = userRole === 'scorer' && user.role === 'viewer' ? 'scorer' : (user.role || 'viewer');
+    setUserRole(activeRole);
+    setPaymentStatus(user.paymentStatus || 'unpaid');
+    setSubscriptionExpiry(user.subscriptionExpiry || '');
+    setSubscriptionPlan(user.subscriptionPlan || '');
+    setPlayerSpecialty(user.specialty || '');
+    const specs = typeof user.specialties === 'object' && user.specialties !== null ? user.specialties : (user.specialties ? JSON.parse(user.specialties) : {});
+    setPlayerSpecialties(specs);
+    const loginSportsArr = Array.isArray(user.sports_interests) ? user.sports_interests : [];
+    setPlayerSportsInterests(loginSportsArr);
+    
+    localStorage.setItem('bcp_auth_token', token);
+    localStorage.setItem('bcp_api_key', user.apiKey || '');
+    localStorage.setItem('bcp_player_id', user.playerId);
+    localStorage.setItem('bcp_username', user.username || '');
+    localStorage.setItem('bcp_email', user.email || '');
+    localStorage.setItem('bcp_phone', user.phone || '');
+    localStorage.setItem('bcp_user_role', activeRole);
+    localStorage.setItem('bcp_payment_status', user.paymentStatus || 'unpaid');
+    localStorage.setItem('bcp_subscription_expiry', user.subscriptionExpiry || '');
+    localStorage.setItem('bcp_subscription_plan', user.subscriptionPlan || '');
+    localStorage.setItem('bcp_player_specialty', user.specialty || '');
+    localStorage.setItem('bcp_player_specialties', JSON.stringify(specs));
+    localStorage.setItem('bcp_sports_interests', JSON.stringify(loginSportsArr));
+
+    // Redirect based on resolved activeRole
+    if (activeRole === 'admin') {
+      try {
+        const resV = await authFetch('http://localhost:3001/api/venues');
+        if (resV.ok) {
+          const dataV = await resV.json();
+          const owned = dataV.filter(v => v.ownerId === user.playerId);
+          if (owned.length === 0) {
+            setCurrentScreen('venue_onboarding');
+          } else {
+            setSelectedVenueId(owned[0].id);
+            setCurrentScreen('owner_dashboard');
+          }
+        } else {
+          setCurrentScreen('venue_onboarding');
+        }
+      } catch (e) {
+        setCurrentScreen('venue_onboarding');
+      }
+    } else {
+      setCurrentScreen('player_home');
+    }
+  };
+
+  // Google Authentication handler using Google Identity Services SDK callback (Web)
   const handleGoogleCredentialResponse = async (response) => {
     setLoading(true);
     setAuthError('');
@@ -2151,63 +2210,7 @@ function LoginView() {
         throw new Error(data.error || 'Google Authentication failed.');
       }
       
-      const { token, user } = data;
-
-      // Unified login: no role selection constraints
-      
-      setAuthToken(token);
-      setApiKey(user.apiKey || '');
-      setPlayerId(user.playerId);
-      setUserName(user.username || '');
-      setUserEmail(user.email || '');
-      setUserPhone(user.phone || '');
-      const activeRole = userRole === 'scorer' && user.role === 'viewer' ? 'scorer' : (user.role || 'viewer');
-      setUserRole(activeRole);
-      setPaymentStatus(user.paymentStatus || 'unpaid');
-      setSubscriptionExpiry(user.subscriptionExpiry || '');
-      setSubscriptionPlan(user.subscriptionPlan || '');
-      setPlayerSpecialty(user.specialty || '');
-      const specs = typeof user.specialties === 'object' && user.specialties !== null ? user.specialties : (user.specialties ? JSON.parse(user.specialties) : {});
-      setPlayerSpecialties(specs);
-      const loginSportsArr = Array.isArray(user.sports_interests) ? user.sports_interests : [];
-      setPlayerSportsInterests(loginSportsArr);
-      
-      localStorage.setItem('bcp_auth_token', token);
-      localStorage.setItem('bcp_api_key', user.apiKey || '');
-      localStorage.setItem('bcp_player_id', user.playerId);
-      localStorage.setItem('bcp_username', user.username || '');
-      localStorage.setItem('bcp_email', user.email || '');
-      localStorage.setItem('bcp_phone', user.phone || '');
-      localStorage.setItem('bcp_user_role', activeRole);
-      localStorage.setItem('bcp_payment_status', user.paymentStatus || 'unpaid');
-      localStorage.setItem('bcp_subscription_expiry', user.subscriptionExpiry || '');
-      localStorage.setItem('bcp_subscription_plan', user.subscriptionPlan || '');
-      localStorage.setItem('bcp_player_specialty', user.specialty || '');
-      localStorage.setItem('bcp_player_specialties', JSON.stringify(specs));
-      localStorage.setItem('bcp_sports_interests', JSON.stringify(loginSportsArr));
-
-      // Redirect based on resolved activeRole
-      if (activeRole === 'admin') {
-        try {
-          const resV = await authFetch('http://localhost:3001/api/venues');
-          if (resV.ok) {
-            const dataV = await resV.json();
-            const owned = dataV.filter(v => v.ownerId === user.playerId);
-            if (owned.length === 0) {
-              setCurrentScreen('venue_onboarding');
-            } else {
-              setSelectedVenueId(owned[0].id);
-              setCurrentScreen('owner_dashboard');
-            }
-          } else {
-            setCurrentScreen('venue_onboarding');
-          }
-        } catch (e) {
-          setCurrentScreen('venue_onboarding');
-        }
-      } else {
-        setCurrentScreen('player_home');
-      }
+      await processLoginSuccess(data);
     } catch (err) {
       setAuthError(getFriendlyError(err, 'Google Authentication failed.'));
     } finally {
@@ -2215,8 +2218,52 @@ function LoginView() {
     }
   };
 
+  // Google Authentication handler using Capacitor Google Auth plugin (Mobile)
+  const handleNativeGoogleSignIn = async () => {
+    setLoading(true);
+    setAuthError('');
+    try {
+      const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+      
+      try {
+        await GoogleAuth.initialize({
+          clientId: '358543794487-bknljggg9huk1p788sgo9kqqnrf2l6ug.apps.googleusercontent.com',
+          scopes: ['profile', 'email'],
+          grantOfflineAccess: true
+        });
+      } catch (initErr) {
+        console.warn("GoogleAuth initialize warning:", initErr);
+      }
+      
+      const googleUser = await GoogleAuth.signIn();
+      const idToken = googleUser.authentication.idToken;
+      
+      if (!idToken) {
+        throw new Error("No ID Token returned from Google Sign-In.");
+      }
+      
+      const res = await fetch(`${API_BASE}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: idToken, role: userRole })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Google Authentication failed.');
+      }
+      
+      await processLoginSuccess(data);
+    } catch (err) {
+      console.error("Native Google Sign-In error:", err);
+      setAuthError(getFriendlyError(err, 'Native Google Sign-In failed.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   React.useEffect(() => {
-    if (window.google) {
+    if (window.google && !window.Capacitor) {
       try {
         window.google.accounts.id.initialize({
           client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '358543794487-bknljggg9huk1p788sgo9kqqnrf2l6ug.apps.googleusercontent.com',
@@ -2231,6 +2278,7 @@ function LoginView() {
       }
     }
   }, [activeTab, isForgotPassword]);
+
 
   const handleRequestCode = async (e) => {
     e.preventDefault();
@@ -2936,7 +2984,42 @@ function LoginView() {
           )}
 
           {!showSignupVerifyForm && (
-            <div id="googleBtnDiv" style={{ display: 'flex', justifyContent: 'center', marginTop: 15, marginBottom: 5 }}></div>
+            window.Capacitor ? (
+              <button
+                type="button"
+                onClick={handleNativeGoogleSignIn}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#ffffff',
+                  color: '#757575',
+                  border: '1px solid #dadce0',
+                  borderRadius: '4px',
+                  padding: '0 12px',
+                  height: '40px',
+                  width: '280px',
+                  fontFamily: 'Roboto, arial, sans-serif',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  margin: '15px auto 5px auto',
+                  boxShadow: 'none',
+                  transition: 'background-color 0.218s, border-color 0.218s'
+                }}
+              >
+                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" viewBox="0 0 48 48" style={{ marginRight: '10px' }}>
+                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                  <path fill="#4285F4" d="M46.5 24c0-1.55-.15-3.24-.47-4.77H24v9.03h12.75c-.53 2.87-2.14 5.3-4.57 6.92l7.1 5.51C43.43 36.6 46.5 30.9 46.5 24z"></path>
+                  <path fill="#FBBC05" d="M10.54 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.98-6.19z"></path>
+                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.1-5.51c-2.2 1.48-5.01 2.32-8.79 2.32-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+                  <path fill="none" d="M0 0h48v48H0z"></path>
+                </svg>
+                Sign in with Google
+              </button>
+            ) : (
+              <div id="googleBtnDiv" style={{ display: 'flex', justifyContent: 'center', marginTop: 15, marginBottom: 5 }}></div>
+            )
           )}
 
           <div style={{textAlign: 'center', marginTop: 16, fontSize: '0.75rem', color: 'var(--text-muted)'}}>
