@@ -2218,7 +2218,7 @@ app.get('/api/users/check-username', async (req, res) => {
     }
 
     const [rows] = await dbPool.query(queryStr, queryParams);
-    const count = rows[0].count;
+    const count = parseInt(rows[0].count, 10);
     res.json({ unique: count === 0 });
   } catch (error) {
     res.status(500).json({ error: error.message });
