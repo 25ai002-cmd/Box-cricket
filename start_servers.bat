@@ -6,7 +6,7 @@ echo ===================================================
 echo.
 
 echo [1/2] Starting Express SQL Backend Server on http://localhost:3001...
-start "BoxCricket Pro - Backend" cmd /k "node server.cjs"
+start "BoxCricket Pro - Backend" cmd /k "node --env-file=.env server.cjs"
 timeout /t 2 >nul
 
 echo [2/2] Starting Vite Frontend Dev Server on http://localhost:5173...

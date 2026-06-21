@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start": "node server.cjs",
+    "start": "node --env-file=.env server.cjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "cap:init": "npx cap init",
