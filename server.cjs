@@ -20,6 +20,118 @@ const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'box_cricket_secret_key_12345!@#';
 const BREVO_API_KEY = process.env.BREVO_API_KEY || '';
 
+// Initialize Firebase Admin SDK
+const admin = require('firebase-admin');
+let firebaseInitialized = false;
+
+try {
+  let serviceAccount = null;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    try {
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    } catch (e) {
+      console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON environment variable:", e.message);
+    }
+  } else {
+    // Look for credentials file locally
+    const credentialPath = path.join(__dirname, 'firebase-credentials.json');
+    if (fs.existsSync(credentialPath)) {
+      serviceAccount = require(credentialPath);
+    }
+  }
+
+  if (serviceAccount) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    firebaseInitialized = true;
+    console.log("✅ Firebase Admin SDK successfully initialized!");
+  } else {
+    console.warn("⚠️ Firebase Admin SDK not initialized. FIREBASE_SERVICE_ACCOUNT_JSON or firebase-credentials.json missing. Push notifications will be skipped.");
+  }
+} catch (error) {
+  console.error("❌ Failed to initialize Firebase Admin SDK:", error.message);
+}
+
+// Helper to send push notifications
+async function sendPushNotification(playerId, title, body, data = {}) {
+  if (!firebaseInitialized) {
+    console.warn("FCM push skipped: Firebase Admin SDK not initialized.");
+    return;
+  }
+  
+  try {
+    let tokens = [];
+    if (useLocalFallback) {
+      const db = readLocalDB();
+      if (!db.user_push_tokens) db.user_push_tokens = [];
+      tokens = db.user_push_tokens
+        .filter(t => t.playerId === playerId)
+        .map(t => t.token);
+    } else {
+      const [rows] = await dbPool.query('SELECT token FROM user_push_tokens WHERE playerId = ?', [playerId]);
+      tokens = rows.map(r => r.token);
+    }
+
+    if (tokens.length === 0) {
+      console.log(`No registered push tokens found for playerId: ${playerId}`);
+      return;
+    }
+
+    // Clean up empty data fields
+    const payloadData = {};
+    for (const [k, v] of Object.entries(data)) {
+      if (v !== undefined && v !== null) {
+        payloadData[k] = String(v);
+      }
+    }
+
+    const messages = tokens.map(token => ({
+      token,
+      notification: { title, body },
+      data: payloadData,
+      android: {
+        priority: 'high',
+        notification: {
+          sound: 'default',
+          clickAction: 'FCM_PLUGIN_ACTIVITY'
+        }
+      }
+    }));
+
+    // Send messages using Firebase Admin SDK sendEach
+    const response = await admin.messaging().sendEach(messages);
+    console.log(`Successfully sent ${response.successCount} push notifications for playerId: ${playerId}`);
+    
+    // Optional: Clean up failed tokens (e.g. invalid/expired ones)
+    if (response.failureCount > 0) {
+      const tokensToRemove = [];
+      response.responses.forEach((resp, idx) => {
+        if (!resp.success) {
+          const errorCode = resp.error?.code;
+          if (errorCode === 'messaging/invalid-registration-token' || errorCode === 'messaging/registration-token-not-registered') {
+            tokensToRemove.push(tokens[idx]);
+          }
+        }
+      });
+
+      if (tokensToRemove.length > 0) {
+        console.log(`Cleaning up ${tokensToRemove.length} inactive tokens...`);
+        if (useLocalFallback) {
+          const db = readLocalDB();
+          db.user_push_tokens = db.user_push_tokens.filter(t => !(t.playerId === playerId && tokensToRemove.includes(t.token)));
+          writeLocalDB(db);
+        } else {
+          // MySQL/Postgres clean up
+          await dbPool.query('DELETE FROM user_push_tokens WHERE playerId = ? AND token IN (?)', [playerId, tokensToRemove]);
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Error sending push notification to playerId: ${playerId}:`, error.message);
+  }
+}
+
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -822,6 +934,15 @@ async function initDatabase() {
         venueId VARCHAR(50) NOT NULL,
         visitCount INT NOT NULL DEFAULT 0,
         PRIMARY KEY (playerId, venueId)
+      )
+    `);
+
+    // User push tokens table (for FCM push notifications)
+    await dbPool.query(`
+      CREATE TABLE IF NOT EXISTS user_push_tokens (
+        playerId VARCHAR(50) NOT NULL,
+        token VARCHAR(255) NOT NULL,
+        PRIMARY KEY (playerId, token)
       )
     `);
 
@@ -2565,6 +2686,42 @@ app.post('/api/venues/:id/reviews', authenticateRequest, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+// Register Push Notification Token
+app.post('/api/notifications/register', authenticateRequest, async (req, res) => {
+  const { token } = req.body;
+  const playerId = req.user.playerId;
+
+  if (!token) {
+    return res.status(400).json({ error: 'Push token is required.' });
+  }
+
+  try {
+    if (useLocalFallback) {
+      const db = readLocalDB();
+      if (!db.user_push_tokens) db.user_push_tokens = [];
+      const exists = db.user_push_tokens.some(t => t.playerId === playerId && t.token === token);
+      if (!exists) {
+        db.user_push_tokens.push({ playerId, token });
+        writeLocalDB(db);
+      }
+    } else {
+      if (isPostgres) {
+        await dbPool.query(
+          'INSERT INTO user_push_tokens (playerId, token) VALUES (?, ?) ON CONFLICT (playerId, token) DO NOTHING',
+          [playerId, token]
+        );
+      } else {
+        await dbPool.query(
+          'INSERT IGNORE INTO user_push_tokens (playerId, token) VALUES (?, ?)',
+          [playerId, token]
+        );
+      }
+    }
+    res.json({ success: true, message: 'Push token registered successfully.' });
+  } catch (error) {
+    console.error("Token registration error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // 3. BOOKINGS
@@ -2630,18 +2787,20 @@ app.post('/api/bookings', authenticateRequest, async (req, res) => {
     }
   }
 
-  // Trigger emails in background
+  // Trigger emails and push notifications in background
   setTimeout(async () => {
     try {
       for (const b of bookingsList) {
         let customerEmail = req.user.email;
         let ownerEmail = null;
         let ownerName = 'Arena Owner';
+        let ownerId = null;
         
         if (useLocalFallback) {
           const db = readLocalDB();
           const venue = db.venues.find(v => v.id === b.venueId);
           if (venue) {
+            ownerId = venue.ownerId;
             const owner = db.users.find(u => u.playerId === venue.ownerId);
             if (owner) {
               ownerEmail = owner.email;
@@ -2651,7 +2810,7 @@ app.post('/api/bookings', authenticateRequest, async (req, res) => {
         } else {
           const [vRows] = await dbPool.query('SELECT ownerId FROM venues WHERE id = ?', [b.venueId]);
           if (vRows.length > 0) {
-            const ownerId = vRows[0].ownerId;
+            ownerId = vRows[0].ownerId;
             const [uRows] = await dbPool.query('SELECT email, username FROM users WHERE playerId = ?', [ownerId]);
             if (uRows.length > 0) {
               ownerEmail = uRows[0].email;
@@ -2661,9 +2820,25 @@ app.post('/api/bookings', authenticateRequest, async (req, res) => {
         }
         
         await sendBookingConfirmationEmails(b, customerEmail, ownerEmail, ownerName);
+
+        // Trigger Push Notifications
+        if (ownerId) {
+          sendPushNotification(
+            ownerId,
+            'New Booking Received! 🏏',
+            `New booking at your venue ${b.venueName} for ${b.date} at ${b.timeSlot}.`,
+            { type: 'new_booking', bookingId: b.id }
+          );
+        }
+        sendPushNotification(
+          req.user.playerId,
+          'Booking Placed Successfully! 🎉',
+          `Your booking at ${b.venueName} for ${b.date} at ${b.timeSlot} is confirmed.`,
+          { type: 'booking_confirmed', bookingId: b.id }
+        );
       }
     } catch (e) {
-      console.error("Error in sending booking confirmation emails:", e.message);
+      console.error("Error in sending booking confirmation emails/pushes:", e.message);
     }
   }, 100);
 });
@@ -2693,33 +2868,43 @@ app.delete('/api/bookings/:id', authenticateRequest, async (req, res) => {
     }
   }
 
-  // Trigger cancellation emails in background
+  // Trigger cancellation emails and push notifications in background
   if (booking) {
     setTimeout(async () => {
       try {
         let customerEmail = null;
+        let customerId = null;
         const customerName = booking.customerName;
 
         if (req.user && req.user.username === customerName) {
           customerEmail = req.user.email;
+          customerId = req.user.playerId;
         } else {
           if (useLocalFallback) {
             const db = readLocalDB();
             const u = db.users.find(us => us.username === customerName);
-            if (u) customerEmail = u.email;
+            if (u) {
+              customerEmail = u.email;
+              customerId = u.playerId;
+            }
           } else {
-            const [uRows] = await dbPool.query('SELECT email FROM users WHERE username = ?', [customerName]);
-            if (uRows.length > 0) customerEmail = uRows[0].email;
+            const [uRows] = await dbPool.query('SELECT email, playerId FROM users WHERE username = ?', [customerName]);
+            if (uRows.length > 0) {
+              customerEmail = uRows[0].email;
+              customerId = uRows[0].playerId;
+            }
           }
         }
 
         let ownerEmail = null;
         let ownerName = 'Arena Owner';
+        let ownerId = null;
         
         if (useLocalFallback) {
           const db = readLocalDB();
           const venue = db.venues.find(v => v.id === booking.venueId);
           if (venue) {
+            ownerId = venue.ownerId;
             const owner = db.users.find(u => u.playerId === venue.ownerId);
             if (owner) {
               ownerEmail = owner.email;
@@ -2729,7 +2914,7 @@ app.delete('/api/bookings/:id', authenticateRequest, async (req, res) => {
         } else {
           const [vRows] = await dbPool.query('SELECT ownerId FROM venues WHERE id = ?', [booking.venueId]);
           if (vRows.length > 0) {
-            const ownerId = vRows[0].ownerId;
+            ownerId = vRows[0].ownerId;
             const [uRows] = await dbPool.query('SELECT email, username FROM users WHERE playerId = ?', [ownerId]);
             if (uRows.length > 0) {
               ownerEmail = uRows[0].email;
@@ -2737,10 +2922,28 @@ app.delete('/api/bookings/:id', authenticateRequest, async (req, res) => {
             }
           }
         }
-
+        
         await sendBookingCancellationEmails(booking, customerEmail, ownerEmail, ownerName);
+
+        // Trigger Push Notifications
+        if (customerId) {
+          sendPushNotification(
+            customerId,
+            'Booking Cancelled ❌',
+            `Your booking at ${booking.venueName} for ${booking.date} at ${booking.timeSlot} has been cancelled.`,
+            { type: 'booking_cancelled', bookingId: booking.id }
+          );
+        }
+        if (ownerId) {
+          sendPushNotification(
+            ownerId,
+            'Booking Cancelled ❌',
+            `The booking at your venue ${booking.venueName} for ${booking.date} at ${booking.timeSlot} was cancelled.`,
+            { type: 'booking_cancelled', bookingId: booking.id }
+          );
+        }
       } catch (err) {
-        console.error("Error sending booking cancellation emails:", err.message);
+        console.error("Error sending booking cancellation emails/pushes:", err.message);
       }
     }, 100);
   }

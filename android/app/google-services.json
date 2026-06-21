@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "736927082661",
+    "project_id": "cricket-ee8b1",
+    "storage_bucket": "cricket-ee8b1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:736927082661:android:ab15309d569a4f0e2d854c",
+        "android_client_info": {
+          "package_name": "com.playfinity.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDte3aWFH1-tbcYc_NpozrJkU6deduLq8Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

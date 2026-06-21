@@ -1372,6 +1372,64 @@ function AppContent() {
   }, [authToken, userRole, venues, playerId, currentScreen]);
 
   React.useEffect(() => {
+    if (window.Capacitor && authToken) {
+      const initPushNotifications = async () => {
+        try {
+          const { PushNotifications } = await import('@capacitor/push-notifications');
+          
+          let permStatus = await PushNotifications.checkPermissions();
+          if (permStatus.receive === 'prompt') {
+            permStatus = await PushNotifications.requestPermissions();
+          }
+
+          if (permStatus.receive === 'granted') {
+            // Register with Apple/Google to receive push notifications
+            await PushNotifications.register();
+
+            // Register the device token with our backend
+            await PushNotifications.addListener('registration', (token) => {
+              console.log('Push registration success, token: ' + token.value);
+              authFetch('http://localhost:3001/api/notifications/register', {
+                method: 'POST',
+                body: JSON.stringify({ token: token.value })
+              })
+              .then(res => {
+                if (res.ok) return res.json();
+                throw new Error('Failed to register token');
+              })
+              .then(data => {
+                console.log('FCM token registered successfully:', data);
+              })
+              .catch(err => {
+                console.error('Failed to save FCM token to backend:', err);
+              });
+            });
+
+            // Handle errors
+            await PushNotifications.addListener('registrationError', (error) => {
+              console.error('Push registration error: ', JSON.stringify(error));
+            });
+
+            // Handle foreground push notification event
+            await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+              console.log('Push notification received in foreground: ', JSON.stringify(notification));
+            });
+
+            // Handle push notification click action
+            await PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+              console.log('Push notification clicked: ', JSON.stringify(notification));
+            });
+          }
+        } catch (err) {
+          console.error('Failed to initialize Capacitor push notifications:', err);
+        }
+      };
+
+      initPushNotifications();
+    }
+  }, [authToken]);
+
+  React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const shareScoreMatchId = urlParams.get('shareScoreMatchId');
     
