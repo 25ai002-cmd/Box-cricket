@@ -281,22 +281,43 @@ function PermissionModal() {
 
 function PhoneOnboardingModal() {
   const { 
-    userRole, userPhone, updatePhoneOnBackend,
-    showError, showAlert 
+    userRole, userPhone, userName, updateProfileOnBackend,
+    logoutUser, checkUsernameUnique, showError, showAlert 
   } = useAppState();
 
-  const [phoneVal, setPhoneVal] = useState('');
-  const [caretakerVal, setCaretakerVal] = useState('');
+  const [usernameVal, setUsernameVal] = useState(userName ? userName.replace(/\s+/g, '_') : '');
+  const [usernameError, setUsernameError] = useState('');
+  const [phoneVal, setPhoneVal] = useState(userPhone || '');
+  const [caretakerVal, setCaretakerVal] = useState(localStorage.getItem('bcp_caretaker_phone') || '');
   const [phoneError, setPhoneError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleUsernameBlur = async () => {
+    const trimmed = usernameVal.trim();
+    if (!trimmed || trimmed.length < 3) return;
+    if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) {
+      setUsernameError('Only letters, numbers and underscores allowed.');
+      return;
+    }
+    try {
+      const isUnique = await checkUsernameUnique(trimmed);
+      if (!isUnique) {
+        setUsernameError('This username is already taken.');
+      } else {
+        setUsernameError('');
+      }
+    } catch {
+      // silently ignore network errors on blur
+    }
+  };
 
   const handlePhoneBlur = async () => {
     if (!phoneVal.trim() || phoneVal.trim().length < 6) return;
     try {
       const res = await fetch(`${API_BASE}/api/auth/check-phone?phone=${encodeURIComponent(phoneVal.trim())}`);
       const data = await res.json();
-      if (data.taken) {
-        setPhoneError('This phone number is already registered. Please use a different number.');
+      if (data.taken && phoneVal.trim() !== (userPhone || '')) {
+        setPhoneError('This phone number is already registered.');
       } else {
         setPhoneError('');
       }
@@ -308,12 +329,31 @@ function PhoneOnboardingModal() {
   const handleSave = async (e) => {
     e.preventDefault();
     setPhoneError('');
+    setUsernameError('');
     
-    if (!phoneVal.trim()) {
+    const trimmedUser = usernameVal.trim();
+    const trimmedPhone = phoneVal.trim();
+
+    // Username validations
+    if (!trimmedUser) {
+      setUsernameError('Please enter a username.');
+      return;
+    }
+    if (trimmedUser.length < 3) {
+      setUsernameError('Username must be at least 3 characters.');
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(trimmedUser)) {
+      setUsernameError('Only letters, numbers and underscores allowed.');
+      return;
+    }
+
+    // Phone validations
+    if (!trimmedPhone) {
       setPhoneError('Please enter your phone number.');
       return;
     }
-    if (!/^[0-9+ ]{8,15}$/.test(phoneVal.trim())) {
+    if (!/^[0-9+ ]{8,15}$/.test(trimmedPhone)) {
       setPhoneError('Please enter a valid phone number (8–15 digits).');
       return;
     }
@@ -324,22 +364,37 @@ function PhoneOnboardingModal() {
 
     setLoading(true);
     try {
-      const checkRes = await fetch(`${API_BASE}/api/auth/check-phone?phone=${encodeURIComponent(phoneVal.trim())}`);
-      const checkData = await checkRes.json();
-      if (checkData.taken) {
-        setPhoneError('This phone number is already registered. Please use a different number.');
-        setLoading(false);
-        return;
+      // Check username uniqueness if it changed
+      if (trimmedUser.toLowerCase() !== (userName || '').toLowerCase()) {
+        const isUnique = await checkUsernameUnique(trimmedUser);
+        if (!isUnique) {
+          setUsernameError('This username is already taken by another user.');
+          setLoading(false);
+          return;
+        }
       }
 
-      await updatePhoneOnBackend(phoneVal.trim());
+      // Check phone uniqueness if it changed
+      if (trimmedPhone !== (userPhone || '')) {
+        const checkRes = await fetch(`${API_BASE}/api/auth/check-phone?phone=${encodeURIComponent(trimmedPhone)}`);
+        const checkData = await checkRes.json();
+        if (checkData.taken) {
+          setPhoneError('This phone number is already registered.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Update profile on backend
+      await updateProfileOnBackend(trimmedUser, trimmedPhone);
+      
       if (userRole === 'admin') {
-        localStorage.setItem('bcp_owner_phone', phoneVal.trim());
+        localStorage.setItem('bcp_owner_phone', trimmedPhone);
         localStorage.setItem('bcp_caretaker_phone', caretakerVal.trim());
       }
-      await showAlert('Success 🎉', 'Contact details saved successfully.');
+      await showAlert('Success 🎉', 'Profile details saved successfully.');
     } catch (err) {
-      showError('Failed to Save', err.message || 'Could not save phone numbers.');
+      showError('Failed to Save', err.message || 'Could not save profile details.');
     } finally {
       setLoading(false);
     }
@@ -390,10 +445,37 @@ function PhoneOnboardingModal() {
           lineHeight: '1.4',
           margin: 0
         }}>
-          Please provide the required contact number(s) to finish setting up your account:
+          Please provide a username and the required contact number(s) to finish setting up your account:
         </p>
 
         <form onSubmit={handleSave} style={{display: 'flex', flexDirection: 'column', gap: 16}}>
+          <div className="form-group">
+            <label className="form-label">Username</label>
+            <input 
+              type="text" 
+              placeholder="e.g. player_one" 
+              className="form-input" 
+              value={usernameVal}
+              style={usernameError ? { borderColor: '#dc143c' } : {}}
+              onChange={e => { setUsernameVal(e.target.value); setUsernameError(''); }}
+              onBlur={handleUsernameBlur}
+              required
+            />
+            {usernameError && (
+              <p style={{
+                color: '#dc143c',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                marginTop: 5,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 4
+              }}>
+                ⚠ {usernameError}
+              </p>
+            )}
+          </div>
+
           <div className="form-group">
             <label className="form-label">{userRole === 'admin' ? 'Owner Phone Number' : 'Your Phone Number'}</label>
             <input 
@@ -437,9 +519,36 @@ function PhoneOnboardingModal() {
             </div>
           )}
 
-          <button type="submit" className="btn-neon" style={{marginTop: 8}} disabled={loading}>
-            {loading ? 'SAVING...' : 'SAVE DETAILS ⚡'}
-          </button>
+          <div style={{display: 'flex', gap: 10, marginTop: 8}}>
+            <button
+              type="button"
+              onClick={logoutUser}
+              style={{
+                flex: 1, padding: '12px 0', borderRadius: 8,
+                border: '1px solid var(--border)', background: 'transparent',
+                color: 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem'
+              }}
+              disabled={loading}
+            >
+              Back
+            </button>
+            <button 
+              type="submit" 
+              className="btn-neon" 
+              style={{
+                flex: 2, 
+                padding: '12px 0', 
+                fontSize: '1rem', 
+                fontWeight: 'bold',
+                background: 'var(--primary)',
+                color: '#fff',
+                boxShadow: 'var(--primary-glow)'
+              }} 
+              disabled={loading}
+            >
+              {loading ? 'SAVING...' : 'SAVE DETAILS ⚡'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
